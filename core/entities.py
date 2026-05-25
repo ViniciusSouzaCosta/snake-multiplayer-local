@@ -9,17 +9,23 @@ class Position:
 
 
 class Snake:
-    def __init__(self, start_x, start_y):
+    def __init__(self, start_x, start_y, player_id, start_direction=Direction.RIGHT):
+        self.player_id = player_id
         self.body = [
             Position(start_x, start_y),
             Position(start_x - 1, start_y),
             Position(start_x - 2, start_y)
         ]
-        self.direction = Direction.RIGHT
-        self.next_direction = Direction.RIGHT
+        self.direction = start_direction
+        self.next_direction = start_direction
         self.grow_next = False
+        self.alive = True
+        self.score = 0
 
     def change_direction(self, direction):
+        if not self.alive:
+            return
+            
         if self.direction == Direction.UP and direction == Direction.DOWN:
             return
         if self.direction == Direction.DOWN and direction == Direction.UP:
@@ -32,6 +38,9 @@ class Snake:
         self.next_direction = direction
 
     def move(self):
+        if not self.alive:
+            return
+            
         self.direction = self.next_direction
         head = self.body[0]
 
@@ -52,13 +61,17 @@ class Snake:
             self.body.pop()
 
     def grow(self):
-        self.grow_next = True
+        if self.alive:
+            self.grow_next = True
+            self.score += 1
 
     def head(self):
-        return self.body[0]
+        return self.body[0] if self.body else None
 
     def collides_with_self(self):
         head = self.head()
+        if not head:
+            return False
 
         for part in self.body[1:]:
             if head.x == part.x and head.y == part.y:
@@ -72,6 +85,12 @@ class Snake:
                 return True
 
         return False
+    
+    def kill(self):
+        self.alive = False
+    
+    def is_alive(self):
+        return self.alive
 
 
 @dataclass
