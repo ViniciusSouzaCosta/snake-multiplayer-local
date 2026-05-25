@@ -11,11 +11,38 @@ class Position:
 class Snake:
     def __init__(self, start_x, start_y, player_id, start_direction=Direction.RIGHT):
         self.player_id = player_id
-        self.body = [
-            Position(start_x, start_y),
-            Position(start_x - 1, start_y),
-            Position(start_x - 2, start_y)
-        ]
+        
+        # Garantir que a cobra comece dentro dos limites do grid com espaço suficiente
+        start_x = max(3, min(start_x, GRID_WIDTH - 4))
+        start_y = max(3, min(start_y, GRID_HEIGHT - 4))
+        
+        # Criar o corpo baseado na direção inicial
+        self.body = []
+        if start_direction == Direction.RIGHT:
+            self.body = [
+                Position(start_x, start_y),
+                Position(start_x - 1, start_y),
+                Position(start_x - 2, start_y)
+            ]
+        elif start_direction == Direction.LEFT:
+            self.body = [
+                Position(start_x, start_y),
+                Position(start_x + 1, start_y),
+                Position(start_x + 2, start_y)
+            ]
+        elif start_direction == Direction.DOWN:
+            self.body = [
+                Position(start_x, start_y),
+                Position(start_x, start_y - 1),
+                Position(start_x, start_y - 2)
+            ]
+        else:  # Direction.UP
+            self.body = [
+                Position(start_x, start_y),
+                Position(start_x, start_y + 1),
+                Position(start_x, start_y + 2)
+            ]
+        
         self.direction = start_direction
         self.next_direction = start_direction
         self.grow_next = False
@@ -96,3 +123,7 @@ class Snake:
 @dataclass
 class Food:
     position: Position
+
+
+# Importar GRID_WIDTH e GRID_HEIGHT para usar na validação
+from core.config import GRID_WIDTH, GRID_HEIGHT

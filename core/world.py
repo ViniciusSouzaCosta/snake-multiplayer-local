@@ -9,7 +9,7 @@ class World:
     def __init__(self):
         self.num_players = 0
         self.snakes = []
-        self.foods = []  # Multiple foods for multiplayer
+        self.foods = []
         self.score = 0
         self.game_over = False
         self.winner = None
@@ -22,13 +22,25 @@ class World:
         self.game_over = False
         self.winner = None
         
-        # Starting positions for up to 4 players (corners of the map)
+        # Starting positions for up to 4 players - posições completamente seguras
+        # Todas as posições garantem espaço para a cobra de 3 segmentos
         start_positions = [
-            (GRID_WIDTH // 4, GRID_HEIGHT // 2),           # Left-center
-            (3 * GRID_WIDTH // 4, GRID_HEIGHT // 2),       # Right-center
-            (GRID_WIDTH // 2, GRID_HEIGHT // 4),           # Top-center
-            (GRID_WIDTH // 2, 3 * GRID_HEIGHT // 4)        # Bottom-center
+            (10, GRID_HEIGHT // 2),                    # Left side (x=10)
+            (GRID_WIDTH - 10, GRID_HEIGHT // 2),       # Right side (x=width-10)
+            (GRID_WIDTH // 2, 10),                     # Top side (y=10)
+            (GRID_WIDTH // 2, GRID_HEIGHT - 10)        # Bottom side (y=height-10)
         ]
+        
+        # Validar e ajustar posições para garantir que estão dentro do grid
+        valid_positions = []
+        for x, y in start_positions:
+            # Garantir que a cobra inteira caiba (3 segmentos)
+            # Para cobras que andam para a direita, precisamos de espaço à esquerda
+            # Para cobras que andam para a esquerda, precisamos de espaço à direita
+            # Para cima, espaço em baixo, etc.
+            adjusted_x = max(5, min(GRID_WIDTH - 5, x))
+            adjusted_y = max(5, min(GRID_HEIGHT - 5, y))
+            valid_positions.append((adjusted_x, adjusted_y))
         
         # Directions facing towards center for each player
         start_directions = [
@@ -39,13 +51,29 @@ class World:
         ]
         
         for i in range(num_players):
-            start_x, start_y = start_positions[i]
+            start_x, start_y = valid_positions[i]
             direction = start_directions[i]
+            
+            # Ajustar posição específica baseada na direção para garantir que a cobra não nasça colidindo
+            if direction == Direction.RIGHT:
+                # Cobra vai para direita, então precisa de espaço à esquerda
+                start_x = max(3, start_x)
+            elif direction == Direction.LEFT:
+                # Cobra vai para esquerda, então precisa de espaço à direita
+                start_x = min(GRID_WIDTH - 4, start_x)
+            elif direction == Direction.DOWN:
+                # Cobra vai para baixo, então precisa de espaço acima
+                start_y = max(3, start_y)
+            elif direction == Direction.UP:
+                # Cobra vai para cima, então precisa de espaço abaixo
+                start_y = min(GRID_HEIGHT - 4, start_y)
+            
             snake = Snake(start_x, start_y, i + 1, direction)
             self.snakes.append(snake)
         
-        # Create initial food (one per player)
-        for _ in range(num_players):
+        # Create initial food (quantidade baseada no número de jogadores)
+        initial_food_count = 2 if num_players > 1 else 1
+        for _ in range(initial_food_count):
             self.create_food()
     
     def reset(self):
@@ -55,9 +83,10 @@ class World:
     
     def create_food(self):
         """Create a new food at a position not occupied by any snake"""
-        while True:
-            x = random.randint(0, GRID_WIDTH - 1)
-            y = random.randint(0, GRID_HEIGHT - 1)
+        max_attempts = 100
+        for _ in range(max_attempts):
+            x = random.randint(1, GRID_WIDTH - 2)
+            y = random.randint(1, GRID_HEIGHT - 2)
             position = Position(x, y)
             
             # Check if position is occupied by any snake
@@ -76,6 +105,19 @@ class World:
             if not occupied:
                 self.foods.append(Food(position))
                 return
+        
+        # Se não encontrar posição depois de muitas tentativas, colocar em qualquer lugar
+        for x in range(GRID_WIDTH):
+            for y in range(GRID_HEIGHT):
+                pos = Position(x, y)
+                occupied = False
+                for snake in self.snakes:
+                    if snake.occupies(pos):
+                        occupied = True
+                        break
+                if not occupied:
+                    self.foods.append(Food(pos))
+                    return
 
     def handle_command(self, command, player_index=None):
         """Handle commands with optional player specification"""
@@ -127,20 +169,38 @@ class World:
         # Check food collisions
         self.check_food_collisions()
         
-        # Check if game is over (only one snake alive or no snakes alive)
+        # Check win condition based on number of players
+        self.check_win_condition()
+    
+    def check_win_condition(self):
+        """Check win condition - different for single player vs multiplayer"""
         alive_snakes = [s for s in self.snakes if s.is_alive()]
-        if len(alive_snakes) <= 1:
-            self.game_over = True
-            if len(alive_snakes) == 1:
-                self.winner = alive_snakes[0].player_id
-            else:
-                self.winner = None
+        
+        if self.num_players == 1:
+            # Single player mode: win by reaching a target score or maximum size
+            # Vence ao atingir tamanho máximo que preenche o grid
+            single_snake = self.snakes[0]
+            max_size = GRID_WIDTH * GRID_HEIGHT
+            
+            if len(single_snake.body) >= max_size:
+                self.game_over = True
+                self.winner = 1
+        else:
+            # Multiplayer mode: win by being the last alive
+            if len(alive_snakes) <= 1:
+                self.game_over = True
+                if len(alive_snakes) == 1:
+                    self.winner = alive_snakes[0].player_id
+                else:
+                    self.winner = None
 
     def check_collisions(self):
         """Check all collision types for all snakes"""
-        alive_snakes = [s for s in self.snakes if s.is_alive()]
-        
-        for snake in alive_snakes:
+        # Primeiro, marcar todas as cobras que colidem com paredes
+        for snake in self.snakes:
+            if not snake.is_alive():
+                continue
+                
             head = snake.head()
             if not head:
                 continue
@@ -149,6 +209,10 @@ class World:
             if (head.x < 0 or head.x >= GRID_WIDTH or 
                 head.y < 0 or head.y >= GRID_HEIGHT):
                 snake.kill()
+        
+        # Depois, verificar auto-colisão e colisão entre cobras
+        for snake in self.snakes:
+            if not snake.is_alive():
                 continue
             
             # Self collision
@@ -156,22 +220,24 @@ class World:
                 snake.kill()
                 continue
             
-            # Collision with other snakes
-            for other_snake in self.snakes:
-                if other_snake == snake:
-                    continue
-                
-                # Head collision with other snake's body
-                if other_snake.occupies(head):
-                    snake.kill()
-                    break
-                
-                # Head-to-head collision
-                other_head = other_snake.head()
-                if other_head and head.x == other_head.x and head.y == other_head.y:
-                    snake.kill()
-                    other_snake.kill()
-                    break
+            # Collision with other snakes (apenas para multiplayer)
+            if self.num_players > 1:
+                for other_snake in self.snakes:
+                    if other_snake == snake or not other_snake.is_alive():
+                        continue
+                    
+                    # Head collision with other snake's body
+                    head = snake.head()
+                    if head and other_snake.occupies(head):
+                        snake.kill()
+                        break
+                    
+                    # Head-to-head collision (ambas morrem)
+                    other_head = other_snake.head()
+                    if head and other_head and head.x == other_head.x and head.y == other_head.y:
+                        snake.kill()
+                        other_snake.kill()
+                        break
 
     def check_food_collisions(self):
         """Check if any snake's head collides with food"""
@@ -185,7 +251,7 @@ class World:
             if not head:
                 continue
             
-            for food in self.foods:
+            for food in self.foods[:]:  # Iterar sobre cópia da lista
                 if head.x == food.position.x and head.y == food.position.y:
                     snake.grow()
                     foods_to_remove.append(food)
@@ -197,8 +263,13 @@ class World:
                 self.foods.remove(food)
                 self.create_food()
         
-        # Ensure we always have at least 2 foods in multiplayer
-        while len(self.foods) < 2 and len([s for s in self.snakes if s.is_alive()]) > 1:
-            self.create_food()
-        while len(self.foods) < 1 and len([s for s in self.snakes if s.is_alive()]) <= 1:
-            self.create_food()
+        # Ensure we always have enough foods based on player count
+        if self.num_players == 1:
+            while len(self.foods) < 1:
+                self.create_food()
+        else:
+            # Para multiplayer, manter pelo menos 2 comidas se houver mais de 1 jogador vivo
+            alive_count = len([s for s in self.snakes if s.is_alive()])
+            target_food_count = 2 if alive_count > 1 else 1
+            while len(self.foods) < target_food_count:
+                self.create_food()
