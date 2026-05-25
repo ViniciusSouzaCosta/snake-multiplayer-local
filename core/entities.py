@@ -1,0 +1,79 @@
+from dataclasses import dataclass
+from core.commands import Direction
+
+
+@dataclass
+class Position:
+    x: int
+    y: int
+
+
+class Snake:
+    def __init__(self, start_x, start_y):
+        self.body = [
+            Position(start_x, start_y),
+            Position(start_x - 1, start_y),
+            Position(start_x - 2, start_y)
+        ]
+        self.direction = Direction.RIGHT
+        self.next_direction = Direction.RIGHT
+        self.grow_next = False
+
+    def change_direction(self, direction):
+        if self.direction == Direction.UP and direction == Direction.DOWN:
+            return
+        if self.direction == Direction.DOWN and direction == Direction.UP:
+            return
+        if self.direction == Direction.LEFT and direction == Direction.RIGHT:
+            return
+        if self.direction == Direction.RIGHT and direction == Direction.LEFT:
+            return
+
+        self.next_direction = direction
+
+    def move(self):
+        self.direction = self.next_direction
+        head = self.body[0]
+
+        if self.direction == Direction.UP:
+            new_head = Position(head.x, head.y - 1)
+        elif self.direction == Direction.DOWN:
+            new_head = Position(head.x, head.y + 1)
+        elif self.direction == Direction.LEFT:
+            new_head = Position(head.x - 1, head.y)
+        else:
+            new_head = Position(head.x + 1, head.y)
+
+        self.body.insert(0, new_head)
+
+        if self.grow_next:
+            self.grow_next = False
+        else:
+            self.body.pop()
+
+    def grow(self):
+        self.grow_next = True
+
+    def head(self):
+        return self.body[0]
+
+    def collides_with_self(self):
+        head = self.head()
+
+        for part in self.body[1:]:
+            if head.x == part.x and head.y == part.y:
+                return True
+
+        return False
+
+    def occupies(self, position):
+        for part in self.body:
+            if part.x == position.x and part.y == position.y:
+                return True
+
+        return False
+
+
+@dataclass
+class Food:
+    position: Position
