@@ -89,13 +89,13 @@ class Menu:
             self.screen.blit(text, text_rect)
         
         # Draw controls info
-        controls_y = C.HEIGHT - 100
+        controls_y = C.HEIGHT - 140
         controls_text = [
-            "Controls:",
-            "P1: Arrows / WASD",
-            "P2: IJKL (I=Up, J=Left, K=Down, L=Right)",
-            "P3: TFGH (T=Up, F=Left, G=Down, H=Right)",
-            "P4: UJNM (U=Up, J=Left, N=Down, M=Right)"
+            "Controles / Cores:",
+            "P1 (Azul):      WASD / Controle 1",
+            "P2 (Vermelho):  ⬆⬅⬇⮕ / Controle 2",
+            "P3 (Verde):     IJKL / Controle 3",
+            "P4 (Laranja):   TFGH / Controle 4"
         ]
         
         y_offset = 0

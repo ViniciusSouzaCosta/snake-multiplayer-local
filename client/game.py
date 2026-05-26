@@ -11,6 +11,7 @@ from client.menu import Menu
 class Game:
     def __init__(self):
         pg.init()
+        pg.joystick.init()
         
         self.screen = pg.display.set_mode((C.WIDTH, C.HEIGHT))
         pg.display.set_caption("Snake Multiplayer - Up to 4 Players")
